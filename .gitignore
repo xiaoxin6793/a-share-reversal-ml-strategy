@@ -19,14 +19,6 @@ results/*.parquet
 results/*.csv
 results/*.json
 
-# 报告（可由代码重新生成）
-report/*.docx
-report/*.pdf
-
-# 图表（可由代码重新生成）
-report/figures/*.png
-report/figures/*.jpg
-
 # IDE
 .idea/
 .vscode/

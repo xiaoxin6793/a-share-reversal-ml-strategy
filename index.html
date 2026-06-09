@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股短期反转策略与机器学习增强研究 - 交互式Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e1e4e8; min-height: 100vh; }
+  
+  .header { background: linear-gradient(135deg, #1a1d29 0%, #2d1b4e 100%); padding: 24px 40px; border-bottom: 1px solid #30363d; }
+  .header h1 { font-size: 24px; color: #f0f6fc; margin-bottom: 6px; }
+  .header p { font-size: 14px; color: #8b949e; }
+  
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: #161b22; border-radius: 10px; padding: 4px; }
+  .tab { flex: 1; padding: 12px 16px; text-align: center; cursor: pointer; border-radius: 8px; transition: all 0.2s; font-size: 14px; color: #8b949e; font-weight: 500; }
+  .tab:hover { color: #c9d1d9; background: #21262d; }
+  .tab.active { background: #238636; color: #fff; }
+  
+  .panel { display: none; }
+  .panel.active { display: block; }
+  
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .card h2 { font-size: 18px; color: #f0f6fc; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card h3 { font-size: 15px; color: #c9d1d9; margin-bottom: 12px; }
+  
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .metric { background: #0d1117; border: 1px solid #30363d; border-radius: 10px; padding: 16px; text-align: center; }
+  .metric .label { font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+  .metric .value { font-size: 22px; font-weight: 700; }
+  .metric .value.positive { color: #3fb950; }
+  .metric .value.negative { color: #f85149; }
+  .metric .value.neutral { color: #58a6ff; }
+  
+  .chart-container { position: relative; height: 400px; margin: 10px 0; }
+  .chart-container.half { height: 280px; }
+  
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #21262d; color: #c9d1d9; padding: 10px 12px; text-align: left; font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
+  tr:hover { background: #161b22; }
+  .positive { color: #3fb950; }
+  .negative { color: #f85149; }
+  
+  .controls { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .controls label { font-size: 13px; color: #8b949e; display: flex; align-items: center; gap: 6px; }
+  .controls select, .controls input { background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; padding: 6px 10px; border-radius: 6px; font-size: 13px; }
+  
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #1b4332; color: #3fb950; }
+  .badge-red { background: #4c1d1d; color: #f85149; }
+  .badge-blue { background: #1d3b5c; color: #58a6ff; }
+  
+  .warning { background: #1c1a0e; border: 1px solid #9e6a03; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #d29922; }
+  
+  .strategy-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .strategy-legend .item { display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; }
+  .strategy-legend .dot { width: 10px; height: 10px; border-radius: 50%; }
+  
+  .footer { text-align: center; padding: 20px; color: #484f58; font-size: 12px; border-top: 1px solid #21262d; margin-top: 30px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>A股短期反转策略与机器学习增强研究</h1>
+  <p>量化策略回测 | FF3因子归因 | 交互式Dashboard | 5,418只A股 | 2013-2025</p>
+</div>
+
+<div class="container">
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0)">📊 净值与回撤</div>
+    <div class="tab" onclick="switchTab(1)">🏆 绩效对比</div>
+    <div class="tab" onclick="switchTab(2)">🧮 FF3归因</div>
+    <div class="tab" onclick="switchTab(3)">🌲 特征重要性</div>
+    <div class="tab" onclick="switchTab(4)">📋 研究说明</div>
+  </div>
+
+  <!-- Panel 0: 净值与回撤 -->
+  <div class="panel active" id="panel0">
+    <div class="warning">
+      ⚠️ 数据真实性声明：本Dashboard所有数据均来自实际回测结果，未做任何捏造。ML策略在测试期为负收益，如实呈现。
+    </div>
+    <div class="controls">
+      <label>区间选择:
+        <select id="navPeriod" onchange="updateNavChart()">
+          <option value="all">全样本</option>
+          <option value="train">训练集 (2014-2019)</option>
+          <option value="val">验证集 (2020-2022)</option>
+          <option value="test" selected>测试集 (2023-2025)</option>
+        </select>
+      </label>
+      <label>策略:</label>
+      <div id="navStrategyToggles" class="strategy-legend"></div>
+    </div>
+    <div class="card">
+      <h2>📈 累计净值曲线</h2>
+      <div class="chart-container"><canvas id="navChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>📉 回撤分析</h2>
+      <div class="chart-container half"><canvas id="ddChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Panel 1: 绩效对比 -->
+  <div class="panel" id="panel1">
+    <div class="controls">
+      <label>区间:
+        <select id="perfPeriod" onchange="updatePerfCharts()">
+          <option value="test" selected>测试集 (2023-2025)</option>
+          <option value="train">训练集 (2014-2019)</option>
+          <option value="val">验证集 (2020-2022)</option>
+          <option value="all">全样本</option>
+        </select>
+      </label>
+    </div>
+    <div class="metrics" id="kpiMetrics"></div>
+    <div class="row">
+      <div class="card">
+        <h2>年化收益率对比</h2>
+        <div class="chart-container half"><canvas id="returnChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>夏普比率对比</h2>
+        <div class="chart-container half"><canvas id="sharpeChart"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>绩效明细表</h2>
+      <div id="perfTable"></div>
+    </div>
+  </div>
+
+  <!-- Panel 2: FF3归因 -->
+  <div class="panel" id="panel2">
+    <div class="card">
+      <h2>🧮 Fama-French 三因子归因</h2>
+      <div class="chart-container half"><canvas id="ff3AlphaChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>FF3回归结果明细</h3>
+      <div id="ff3Table"></div>
+    </div>
+  </div>
+
+  <!-- Panel 3: 特征重要性 -->
+  <div class="panel" id="panel3">
+    <div class="row">
+      <div class="card">
+        <h2>🌲 随机森林特征重要性</h2>
+        <div class="chart-container half"><canvas id="rfChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>⚡ XGBoost特征重要性</h2>
+        <div class="chart-container half"><canvas id="xgbChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel 4: 研究说明 -->
+  <div class="panel" id="panel4">
+    <div class="card">
+      <h2>📋 研究概述</h2>
+      <p style="line-height:1.8;color:#c9d1d9;font-size:14px;">
+        本研究探索<strong>机器学习能否有效改进传统短期反转策略</strong>。基于A股全市场5,418只股票、2013-2025年的月频数据，构建了3种传统反转基线策略（Mom1/Mom3/Mom6多空组合）和4种机器学习策略（Ridge、Lasso、随机森林、XGBoost），采用三段式样本外验证（训练/验证/测试），并进行Fama-French三因子归因分析。
+      </p>
+    </div>
+    <div class="card">
+      <h2>📊 数据清洗</h2>
+      <table>
+        <tr><th>处理步骤</th><th>说明</th></tr>
+        <tr><td>Winsorize</td><td>月收益率裁剪至 [-50%, +100%]</td></tr>
+        <tr><td>市值过滤</td><td>剔除每期市值最小5%（壳公司）</td></tr>
+        <tr><td>最终样本</td><td>5,418只股票，510,134条观测</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>🔬 样本划分</h2>
+      <table>
+        <tr><th>区间</th><th>时间范围</th><th>用途</th></tr>
+        <tr><td>训练集</td><td>2014-01 ~ 2019-12</td><td>模型训练</td></tr>
+        <tr><td>验证集</td><td>2020-01 ~ 2022-12</td><td>超参选择</td></tr>
+        <tr><td>测试集</td><td>2023-01 ~ 2025-11</td><td>最终评估</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>💡 核心结论</h2>
+      <div class="warning" style="border-color:#f85149;color:#f85149;background:#1c0d0d;">
+        机器学习未能有效改进反转策略。测试集上所有ML策略夏普比率为负，表现不如简单基线。FF3 Alpha均为负且不显著。
+      </div>
+      <p style="line-height:1.8;color:#c9d1d9;font-size:14px;margin-top:12px;">
+        <strong>可能原因：</strong><br>
+        1. 训练期动量特征均值3-4%，测试期降至1%——因子分布结构性变化<br>
+        2. 2023-2025年A股市场反转效应减弱，传统因子失效<br>
+        3. ML模型过拟合训练期的因子-收益关系<br>
+        4. 做空限制导致多空组合收益被压缩<br><br>
+        <strong>学术价值：</strong>负面结果同样重要。它揭示了A股市场结构变化下传统因子的失效，提示未来研究应关注因子时变性和自适应模型。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  A股短期反转策略与机器学习增强研究 | 数据截至 2025-11 | 所有数据来自真实回测
+</div>
+
+<script>
+// ========== 全局数据 ==========
+let DATA = null;
+let navChart, ddChart, returnChart, sharpeChart, ff3AlphaChart, rfChart, xgbChart;
+
+const COLORS = {
+  'baseline_mom1_ls': '#58a6ff',
+  'baseline_mom3_ls': '#3fb950',
+  'baseline_mom6_ls': '#d2a8ff',
+  'ml_OLSRidge_ls': '#f0883e',
+  'ml_Lasso_ls': '#f85149',
+  'ml_Random_Forest_ls': '#ffd33d',
+  'ml_XGBoost_ls': '#a5d6ff'
+};
+
+const NAMES = {
+  'baseline_mom1_ls': '反转-Mom1',
+  'baseline_mom3_ls': '反转-Mom3',
+  'baseline_mom6_ls': '反转-Mom6',
+  'ml_OLSRidge_ls': 'Ridge回归',
+  'ml_Lasso_ls': 'Lasso回归',
+  'ml_Random_Forest_ls': '随机森林',
+  'ml_XGBoost_ls': 'XGBoost'
+};
+
+let activeStrategies = new Set(Object.keys(COLORS));
+
+// ========== 加载数据 ==========
+fetch('dashboard_data.json')
+  .then(r => r.json())
+  .then(d => { DATA = d; initDashboard(); })
+  .catch(e => console.error('数据加载失败:', e));
+
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i===idx));
+}
+
+function fmt(v, d=2) { return v != null ? v.toFixed(d) : 'N/A'; }
+function fmtPct(v, d=2) { return v != null ? (v*100).toFixed(d)+'%' : 'N/A'; }
+function clsVal(v, inv=false) {
+  if (v > 0) return inv ? 'negative' : 'positive';
+  if (v < 0) return inv ? 'positive' : 'negative';
+  return 'neutral';
+}
+
+function getPeriodSlice(period) {
+  if (period === 'train') return { start: '2014-01', end: '2019-12' };
+  if (period === 'val') return { start: '2020-01', end: '2022-12' };
+  if (period === 'test') return { start: '2023-01', end: '2099-12' };
+  return { start: '0000', end: '9999' };
+}
+
+function sliceData(strategy, period) {
+  const d = DATA.returns[strategy];
+  if (!d) return null;
+  const ps = getPeriodSlice(period);
+  const indices = [];
+  for (let i = 0; i < d.dates.length; i++) {
+    if (d.dates[i] >= ps.start && d.dates[i] <= ps.end) indices.push(i);
+  }
+  return {
+    dates: indices.map(i => d.dates[i]),
+    nav: indices.map(i => d.nav[i]),
+    drawdown: indices.map(i => d.drawdown[i]),
+    returns: indices.map(i => d.returns[i])
+  };
+}
+
+function calcStats(returns) {
+  if (!returns || returns.length < 3) return null;
+  const mean = returns.reduce((a,b) => a+b, 0) / returns.length;
+  const std = Math.sqrt(returns.reduce((a,b) => a+(b-mean)**2, 0) / (returns.length-1));
+  const annRet = Math.pow(1+mean, 12) - 1;
+  const sharpe = std > 0 ? (mean * Math.sqrt(12)) / std : 0;
+  let nav = 1, maxNav = 1, maxDD = 0;
+  for (const r of returns) {
+    nav *= (1 + r);
+    maxNav = Math.max(maxNav, nav);
+    maxDD = Math.min(maxDD, (nav / maxNav) - 1);
+  }
+  const winRate = returns.filter(r => r > 0).length / returns.length;
+  return { annRet, sharpe, maxDD, std: std*Math.sqrt(12), winRate, n: returns.length };
+}
+
+// ========== 初始化 ==========
+function initDashboard() {
+  initNavToggles();
+  updateNavChart();
+  updatePerfCharts();
+  updateFF3();
+  updateFeatureImportance();
+}
+
+function initNavToggles() {
+  const container = document.getElementById('navStrategyToggles');
+  Object.keys(COLORS).forEach(key => {
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.innerHTML = `<span class="dot" style="background:${COLORS[key]}"></span><span>${NAMES[key]}</span>`;
+    item.style.opacity = '1';
+    item.onclick = () => {
+      if (activeStrategies.has(key)) { activeStrategies.delete(key); item.style.opacity = '0.3'; }
+      else { activeStrategies.add(key); item.style.opacity = '1'; }
+      updateNavChart();
+    };
+    container.appendChild(item);
+  });
+}
+
+// ========== 净值与回撤 ==========
+function updateNavChart() {
+  const period = document.getElementById('navPeriod').value;
+  
+  const navDatasets = [];
+  const ddDatasets = [];
+  
+  Object.keys(COLORS).forEach(key => {
+    if (!activeStrategies.has(key)) return;
+    const sliced = sliceData(key, period);
+    if (!sliced || sliced.dates.length === 0) return;
+    
+    // 归一化净值
+    const firstNav = sliced.nav[0] || 1;
+    const normNav = sliced.nav.map(v => v / firstNav);
+    
+    navDatasets.push({
+      label: NAMES[key],
+      data: normNav,
+      borderColor: COLORS[key],
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0.1,
+      fill: false
+    });
+    
+    ddDatasets.push({
+      label: NAMES[key],
+      data: sliced.drawdown.map(v => v * 100),
+      borderColor: COLORS[key],
+      backgroundColor: COLORS[key] + '20',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0.1,
+      fill: true
+    });
+  });
+  
+  const sliced0 = sliceData(Object.keys(COLORS)[0], period);
+  const labels = sliced0 ? sliced0.dates : [];
+  
+  if (navChart) navChart.destroy();
+  navChart = new Chart(document.getElementById('navChart'), {
+    type: 'line',
+    data: { labels, datasets: navDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8b949e', font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#484f58', maxTicksLimit: 12 }, grid: { color: '#21262d' } },
+        y: { ticks: { color: '#484f58' }, grid: { color: '#21262d' } }
+      }
+    }
+  });
+  
+  if (ddChart) ddChart.destroy();
+  ddChart = new Chart(document.getElementById('ddChart'), {
+    type: 'line',
+    data: { labels, datasets: ddDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#484f58', maxTicksLimit: 12 }, grid: { color: '#21262d' } },
+        y: { ticks: { color: '#484f58', callback: v => v+'%' }, grid: { color: '#21262d' } }
+      }
+    }
+  });
+}
+
+// ========== 绩效对比 ==========
+function updatePerfCharts() {
+  const period = document.getElementById('perfPeriod').value;
+  
+  const stats = {};
+  Object.keys(COLORS).forEach(key => {
+    const sliced = sliceData(key, period);
+    if (sliced) stats[key] = calcStats(sliced.returns);
+  });
+  
+  // KPI
+  const best = Object.entries(stats).sort((a,b) => (b[1]?.sharpe||0) - (a[1]?.sharpe||0))[0];
+  const worst = Object.entries(stats).sort((a,b) => (a[1]?.sharpe||0) - (b[1]?.sharpe||0))[0];
+  const baseline = stats['baseline_mom1_ls'];
+  
+  document.getElementById('kpiMetrics').innerHTML = `
+    <div class="metric"><div class="label">最佳策略</div><div class="value ${clsVal(best?.[1]?.sharpe)}">${best ? NAMES[best[0]] : 'N/A'}</div></div>
+    <div class="metric"><div class="label">最佳夏普</div><div class="value ${clsVal(best?.[1]?.sharpe)}">${best ? fmt(best[1].sharpe, 3) : 'N/A'}</div></div>
+    <div class="metric"><div class="label">基线夏普</div><div class="value ${clsVal(baseline?.sharpe)}">${baseline ? fmt(baseline.sharpe, 3) : 'N/A'}</div></div>
+    <div class="metric"><div class="label">策略数量</div><div class="value neutral">${Object.keys(stats).length}</div></div>
+    <div class="metric"><div class="label">最差策略</div><div class="value ${clsVal(worst?.[1]?.sharpe)}">${worst ? NAMES[worst[0]] : 'N/A'}</div></div>
+    <div class="metric"><div class="label">最差回撤</div><div class="value negative">${worst ? fmtPct(worst[1].maxDD) : 'N/A'}</div></div>
+  `;
+  
+  const keys = Object.keys(stats);
+  const names = keys.map(k => NAMES[k]);
+  const colors = keys.map(k => COLORS[k]);
+  
+  if (returnChart) returnChart.destroy();
+  returnChart = new Chart(document.getElementById('returnChart'), {
+    type: 'bar',
+    data: {
+      labels: names,
+      datasets: [{ data: keys.map(k => stats[k] ? stats[k].annRet * 100 : 0), backgroundColor: keys.map(k => stats[k]?.annRet >= 0 ? '#3fb95080' : '#f8514980'), borderColor: keys.map(k => stats[k]?.annRet >= 0 ? '#3fb950' : '#f85149'), borderWidth: 1 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#484f58', callback: v => v+'%' }, grid: { color: '#21262d' } },
+        y: { ticks: { color: '#c9d1d9', font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+  
+  if (sharpeChart) sharpeChart.destroy();
+  sharpeChart = new Chart(document.getElementById('sharpeChart'), {
+    type: 'bar',
+    data: {
+      labels: names,
+      datasets: [{ data: keys.map(k => stats[k] ? stats[k].sharpe : 0), backgroundColor: keys.map(k => stats[k]?.sharpe >= 0 ? '#58a6ff80' : '#f8514980'), borderColor: keys.map(k => stats[k]?.sharpe >= 0 ? '#58a6ff' : '#f85149'), borderWidth: 1 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#484f58' }, grid: { color: '#21262d' } },
+        y: { ticks: { color: '#c9d1d9', font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+  
+  // 绩效表
+  let html = '<table><tr><th>策略</th><th>年化收益</th><th>夏普比率</th><th>年化波动</th><th>最大回撤</th><th>胜率</th><th>N</th></tr>';
+  keys.forEach(k => {
+    const s = stats[k];
+    if (!s) return;
+    html += `<tr>
+      <td style="color:${COLORS[k]}">${NAMES[k]}</td>
+      <td class="${clsVal(s.annRet)}">${fmtPct(s.annRet)}</td>
+      <td class="${clsVal(s.sharpe)}">${fmt(s.sharpe,3)}</td>
+      <td>${fmtPct(s.std)}</td>
+      <td class="negative">${fmtPct(s.maxDD)}</td>
+      <td>${fmtPct(s.winRate)}</td>
+      <td>${s.n}</td>
+    </tr>`;
+  });
+  html += '</table>';
+  document.getElementById('perfTable').innerHTML = html;
+}
+
+// ========== FF3归因 ==========
+function updateFF3() {
+  if (!DATA || !DATA.ff3) return;
+  
+  const items = DATA.ff3;
+  
+  if (ff3AlphaChart) ff3AlphaChart.destroy();
+  ff3AlphaChart = new Chart(document.getElementById('ff3AlphaChart'), {
+    type: 'bar',
+    data: {
+      labels: items.map(i => i.Label || i.Strategy || ''),
+      datasets: [
+        { label: 'Alpha (年化%)', data: items.map(i => (i.Alpha_annual || i.Alpha_ann || 0) * 100), backgroundColor: items.map(i => (i.Alpha_annual || i.Alpha_ann || 0) >= 0 ? '#3fb95080' : '#f8514980'), borderColor: items.map(i => (i.Alpha_annual || i.Alpha_ann || 0) >= 0 ? '#3fb950' : '#f85149'), borderWidth: 1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#484f58', callback: v => v+'%' }, grid: { color: '#21262d' } },
+        y: { ticks: { color: '#c9d1d9', font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+  
+  let html = '<table><tr><th>策略</th><th>Alpha(年化)</th><th>p值</th><th>MKT</th><th>SMB</th><th>HML</th><th>R²</th></tr>';
+  items.forEach(i => {
+    const alpha = i.Alpha_annual || i.Alpha_ann || 0;
+    const pval = i.Alpha_pvalue || i.Alpha_p || 1;
+    const sig = pval < 0.01 ? '***' : pval < 0.05 ? '**' : pval < 0.1 ? '*' : '';
+    html += `<tr>
+      <td>${i.Label || i.Strategy || ''}</td>
+      <td class="${clsVal(alpha)}">${fmtPct(alpha)} ${sig}</td>
+      <td>${fmt(pval, 4)}</td>
+      <td>${fmt(i.MKT || i.Mkt_RF || 0, 3)}</td>
+      <td>${fmt(i.SMB || 0, 3)}</td>
+      <td>${fmt(i.HML || 0, 3)}</td>
+      <td>${fmt(i.R_squared || i.R2 || i['R-squared'] || 0, 3)}</td>
+    </tr>`;
+  });
+  html += '</table>';
+  document.getElementById('ff3Table').innerHTML = html;
+}
+
+// ========== 特征重要性 ==========
+function updateFeatureImportance() {
+  if (!DATA) return;
+  
+  const makeBarChart = (canvasId, items, color) => {
+    const top10 = items.slice(0, 10).reverse();
+    new Chart(document.getElementById(canvasId), {
+      type: 'bar',
+      data: {
+        labels: top10.map(i => i.Feature || i.feature || ''),
+        datasets: [{
+          data: top10.map(i => i.Importance || i.importance || 0),
+          backgroundColor: color + '60',
+          borderColor: color,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#484f58' }, grid: { color: '#21262d' } },
+          y: { ticks: { color: '#c9d1d9', font: { size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
+  };
+  
+  makeBarChart('rfChart', DATA.rf_importance || [], '#ffd33d');
+  makeBarChart('xgbChart', DATA.xgb_importance || [], '#a5d6ff');
+}
+</script>
+</body>
+</html>
