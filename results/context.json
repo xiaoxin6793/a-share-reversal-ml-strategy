@@ -1,0 +1,17 @@
+{
+  "train_end": "2019-12-31",
+  "val_end": "2022-12-31",
+  "features": [
+    "mom1",
+    "mom3",
+    "mom6",
+    "mom12",
+    "log_mktcap"
+  ],
+  "cost": 0.002,
+  "winsorize": [
+    -0.5,
+    1.0
+  ],
+  "baseline_test_sharpe_mom1_ls": 0.0736128796347035
+}
