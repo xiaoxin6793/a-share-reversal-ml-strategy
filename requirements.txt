@@ -1,0 +1,21 @@
+# 数据处理与数值计算
+pandas>=2.0.0
+numpy>=1.24.0
+pyarrow>=12.0.0
+
+# 机器学习
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+
+# 统计分析
+statsmodels>=0.14.0
+
+# 可视化
+matplotlib>=3.7.0
+
+# 交互式Dashboard
+streamlit>=1.28.0
+plotly>=5.15.0
+
+# 报告生成
+python-docx>=0.8.11

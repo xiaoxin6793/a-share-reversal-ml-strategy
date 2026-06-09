@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+
+# 数据文件（过大不上传）
+data/*.parquet
+data/*.csv
+data/*.xlsx
+
+# 生成结果（可由代码重新生成）
+results/*.parquet
+results/*.csv
+results/*.json
+
+# 报告（可由代码重新生成）
+report/*.docx
+report/*.pdf
+
+# 图表（可由代码重新生成）
+report/figures/*.png
+report/figures/*.jpg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Word 临时文件
+~$*
